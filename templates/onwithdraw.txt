@@ -1,0 +1,4 @@
+You have successfully withdrawn **{amount} LBC** to `{address}`! ([tx](https://explorer.lbry.io/tx/{txid})).
+
+----
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io/faq/what-is-lbry) ^&bull; ^r/lbry

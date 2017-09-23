@@ -1,0 +1,4 @@
+I'm sorry, I cannot send any LBC to `{address}` because it is invalid. Also, you cannot withdraw to your deposit address.
+
+----
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io/faq/what-is-lbry) ^&bull; ^r/lbry
