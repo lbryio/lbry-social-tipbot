@@ -586,7 +586,7 @@ const doSendBalance = (message, callback) => {
 };
 
 const sendLbcToAddress = (address, amount, callback) => {
-    request.post({ url: config.lbrycrd.rpcurl, json: { method: 'sendtoaddress', params: [address, amount] } }, (err, resp, body) => {
+    request.post({ url: config.lbrycrd.rpcurl, json: { method: 'sendfrom', params: [config.lbrycrd.account, address, amount] } }, (err, resp, body) => {
         if (err || body.error) {
             return callback(err || body.error, null);
         }

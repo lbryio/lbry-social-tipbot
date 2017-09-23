@@ -3,7 +3,7 @@ CREATE TABLE Users
     `Id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `Username` VARCHAR(20) NOT NULL,
     `Balance` DECIMAL(18,8) UNSIGNED DEFAULT 0 NOT NULL,
-    `DepositAddress` VARCHAR(34) CHARACTER SET latin1 COLLATE latin1_general_ci NOT NULL,
+    `DepositAddress` VARCHAR(34) CHARACTER SET latin1 COLLATE latin1_general_ci,
     `Created` DATETIME NOT NULL,
     PRIMARY KEY `PK_UserId` (`Id`),
     UNIQUE KEY `Idx_RedditUsername` (`Username`),
