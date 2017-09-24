@@ -566,7 +566,7 @@ const sendGild = (sender, recipient, amount, gilddata, callback) => {
         },
         (res, fields, cb) => {
             // send the gild
-            gildThing(gilddata.message.data.name, cb);
+            gildThing(gilddata.message.data.parent_id, cb);
         },
         (success, cb) => {
             // reply to the source message with message template after successful commit
