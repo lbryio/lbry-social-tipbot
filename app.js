@@ -223,8 +223,10 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
             if (senderBalance < amount || (senderBalance - amount) < 0) {
                 return sendPMUsingTemplate('onsendtip.insufficientfunds',
                                            { how_to_use_url: config.howToUseUrl, recipient: `u/${recipient}`, amount: amount, balance: senderBalance },
-                                           tipdata.message.data.author, () => {
-                    cb(new Error('Insufficient funds'), null);
+                                           'Insufficient funds to send tip', tipdata.message.data.author, () => {
+                    markMessageRead(tipdata.message.data.name, () => {
+                        cb(new Error('Insufficient funds'), null);
+                    });
                 });
             }
             
@@ -386,13 +388,12 @@ const markMessageRead = (messageFullId, callback) => {
     });
 };
 
-const sendPMUsingTemplate = (template, substitions, subject, recipient, callback) => {
+const sendPMUsingTemplate = (template, substitutions, subject, recipient, callback) => {
     if (!messageTemplates[template]) {
         return callback(new Error(`Message template ${template} not found.`));
     }
     
     let messageText = messageTemplates[template];
-    console.log(messageText);
     for (let variable in substitutions) {
         if (substitutions.hasOwnProperty(variable)) {
             const re = new RegExp(['{', variable, '}'].join(''), 'ig');
@@ -515,8 +516,10 @@ const sendGild = (sender, recipient, amount, gilddata, callback) => {
             if (senderBalance < amount || (senderBalance - amount) < 0) {
                 return sendPMUsingTemplate('ongild.insufficientfunds',
                                            { how_to_use_url: config.howToUseUrl, amount: amount, amount_usd: gilddata.amountUsd, balance: senderBalance },
-                                           gilddata.message.data.author, () => {
-                    cb(new Error('Insufficient funds'), null);
+                                           'Insufficient funds', gilddata.message.data.author, () => {
+                    markMessageRead(gilddata.message.data.name, () => {
+                        cb(new Error('Insufficient funds'), null); 
+                    });
                 });
             }
             
@@ -647,8 +650,8 @@ const doSendTip = function(body, message, callback) {
         // get the amount
         amountUsd = parseFloat(parts[nameFirst ? 1 : 0].substring(1));
         if (isNaN(amountUsd) || amountUsd <= 0) {
-            return sendPMUsingTemplate('onsendtip.invalidamount', { how_to_use_url: config.howToUseUrl }, message.data.author, () => {
-                callback(null, null);
+            return sendPMUsingTemplate('onsendtip.invalidamount', { how_to_use_url: config.howToUseUrl }, 'Invalid amount for send tip', message.data.author, () => {
+                markMessageRead(message.data.name, callback);
             });
         }
     } else if (parts.length === 3) {
@@ -784,8 +787,11 @@ const doWithdrawal = (amount, address, message, callback) => {
         (balance, cb) => {
             // check sufficient balance
             if (balance < amount || balance - amount < 0) {
-                return sendPMUsingTemplate('onwithdraw.insufficientfunds', { how_to_use_url: config.howToUseUrl }, message.data.author, () => {
-                    cb(new Error('Insufficient funds'), null);
+                return sendPMUsingTemplate('onwithdraw.insufficientfunds', { how_to_use_url: config.howToUseUrl, amount: amount, balance: balance },
+                                           'Insufficient funds for withdrawal', message.data.author, () => {
+                    markMessageRead(message.data.name, () => {
+                        cb(new Error('Insufficient funds'), null);
+                    });
                 });
             }
             
@@ -890,14 +896,15 @@ const processMessage = function(message, callback) {
             const amount = parseFloat(parts[1]);
             if (isNaN(amount) || amount < 0) {
                 // TODO: send a message that the withdrawal amount is invalid
-                return sendPMUsingTemplate('onwithdraw.invalidamount', { how_to_use_url: config.howToUseUrl }, message.data.author, () => {
-                    callback(null, null);
+                return sendPMUsingTemplate('onwithdraw.invalidamount', { how_to_use_url: config.howToUseUrl }, 'Invalid amount for withdrawal', message.data.author, () => {
+                    markMessageRead(message.data.name, callback);
                 });
             }
             
             if (amount <= config.lbrycrd.txfee) {
-                return sendPMUsingTemplate('onwithdraw.amountltefee', { how_to_use_url: config.howToUseUrl, amount: amount, fee: config.lbrycrd.txfee }, message.data.author, () => {
-                    callback(null, null);
+                return sendPMUsingTemplate('onwithdraw.amountltefee', { how_to_use_url: config.howToUseUrl, amount: amount, fee: config.lbrycrd.txfee },
+                                           'Withdrawal amount less than minimum fee', message.data.author, () => {
+                    markMessageRead(message.data.name, callback);
                 });
             }
             
@@ -906,8 +913,8 @@ const processMessage = function(message, callback) {
             try {
                 base58.decode(address);
             } catch(e) {
-                return sendPMUsingTemplate('onwithdraw.invalidaddress', { how_to_use_url: config.howToUseUrl }, message.data.author, () => {
-                    callback(null, null);
+                return sendPMUsingTemplate('onwithdraw.invalidaddress', { how_to_use_url: config.howToUseUrl }, 'Invalid address for withdrawal', message.data.author, () => {
+                    markMessageRead(message.data.name, callback);
                 });
             }
             
