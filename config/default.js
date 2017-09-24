@@ -6,8 +6,12 @@ module.exports = {
     username: '<USERNAME>',
     password: '<PASSWORD>',
     
+    userAgent: '<USER_AGENT_STRING>',
+    howToUseUrl: 'https://np.reddit.com/r/lbry/wiki/tipbot',
+    
     // for handling tip comments
     redditName: 'u/lbryian',
+    gildPrice: 2.5,
     
     mariadb: {
         host: 'localhost',

@@ -37,6 +37,7 @@ CREATE TABLE Tips
     `ParsedAmount` VARCHAR(20) NOT NULL COMMENT 'user amount string, $0.x, 0.x usd or 0.x lbc',
     `AmountUsd` DECIMAL(18,2) UNSIGNED,
     `Amount` DECIMAL(18,8) UNSIGNED NOT NULL,
+    `IsGild` TINYINT(1) DEFAULT 0 NOT NULL,
     `Created` DATETIME NOT NULL,
     PRIMARY KEY `PK_TipId` (`Id`),
     FOREIGN KEY `FK_TipSender` (`SenderId`) REFERENCES `Users` (`Id`),

@@ -11,14 +11,10 @@ if (config.debug) {
 }
 
 // URLS
-const howToUseUrl = 'https://reddit.com/r/lbry';
 const baseUrl = 'https://oauth.reddit.com';
 const rateUrl = 'https://api.lbry.io/lbc/exchange_rate';
 const tokenUrlFormat = 'https://%s:%s@www.reddit.com/api/v1/access_token';
-const txBaseUrl = 'https://explorer.lbry.io/tx';
-
 // Other globals
-const userAgent = 'lbryian/1.0.0 Node.js (by /u/lbryian)';
 const commentKind = 't1';
 const privateMessageKind = 't4';
 let globalAccessToken;
@@ -29,6 +25,8 @@ const messageTemplates = {};
 const templateNames = [
     'onbalance',
     'ondeposit',
+    'ongild',
+    'ongild.insufficientfunds',
     'onsendtip',
     'onsendtip.insufficientfunds',
     'onsendtip.invalidamount',
@@ -223,7 +221,8 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
         (senderBalance, cb) => {
             // balance is less than amount to tip, or the difference after sending the tip is negative
             if (senderBalance < amount || (senderBalance - amount) < 0) {
-                return sendPMUsingTemplate('onsendtip.insufficientfunds', { how_to_use_url: howToUseUrl }, message.data.author, () => {
+                return sendPMUsingTemplate('onsendtip.insufficientfunds',
+                                           { how_to_use_url: config.howToUseUrl, recipient: `u/${recipient}`, amount: amount, balance: senderBalance }, message.data.author, () => {
                     cb(new Error('Insufficient funds'), null);
                 });
             }
@@ -269,7 +268,7 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
         },
         (res, fields, cb) => {
             // reply to the source message with message template after successful commit
-            replyMessageUsingTemplate('onsendtip', { recipient: `u/${recipient}`, tip: `${amount} LBC ($${tipdata.amountUsd})`, how_to_use_url: howToUseUrl},
+            replyMessageUsingTemplate('onsendtip', { recipient: `u/${recipient}`, tip: `${amount} LBC ($${tipdata.amountUsd})`, how_to_use_url: config.howToUseUrl},
                                       tipdata.message.data.name, cb);
         },
         (success, cb) => {
@@ -343,9 +342,33 @@ const convertLbcToUsd = (amount, callback) => {
     });
 };
 
+const gildThing = (thingFullId, callback) => {
+    const url = `${baseUrl}/api/v1/gold/gild/${thingFullId}`;
+    request.post({ url, headers: { 'User-Agent': config.userAgent, 'Authorization': 'Bearer ' + globalAccessToken } }, (err, res, body) => {
+        if (err) {
+            return callback(err, null);
+        }
+        
+        let response;
+        try {
+            response = JSON.parse(body);
+        } catch (e) {
+            return callback(e, null);
+        }
+        
+        if (response.json.ratelimit > 0 ||
+            response.json.errors.length > 0) {
+            return callback(new Error('Rate limited.'), null);
+        }
+        
+        // success
+        return callback(null, true);
+    });
+};
+
 const markMessageRead = (messageFullId, callback) => {
     const url = `${baseUrl}/api/read_message`;
-    request.post({ url, form: { id: messageFullId }, headers: { 'User-Agent': userAgent, 'Authorization': 'Bearer ' + globalAccessToken } }, (err, res, body) => {
+    request.post({ url, form: { id: messageFullId }, headers: { 'User-Agent': config.userAgent, 'Authorization': 'Bearer ' + globalAccessToken } }, (err, res, body) => {
         if (err) {
             return callback(err, null);
         }
@@ -381,7 +404,7 @@ const sendPMUsingTemplate = (template, substitions, subject, recipient, callback
     request.post({
                     url,
                     form: { api_type: 'json', text: messageText, subject, to: recipient },
-                    headers: { 'User-Agent': userAgent, 'Authorization': 'Bearer ' + globalAccessToken }
+                    headers: { 'User-Agent': config.userAgent, 'Authorization': 'Bearer ' + globalAccessToken }
                  }, (err, res, body) => {
                     if (err) {
                         return callback(err, null);
@@ -422,7 +445,7 @@ const replyMessageUsingTemplate = (template, substitutions, sourceMessageFullId,
     request.post({
                     url,
                     form: { api_type: 'json', text: messageText, thing_id: sourceMessageFullId },
-                    headers: { 'User-Agent': userAgent, 'Authorization': 'Bearer ' + globalAccessToken }
+                    headers: { 'User-Agent': config.userAgent, 'Authorization': 'Bearer ' + globalAccessToken }
                  }, (err, res, body) => {
                     if (err) {
                         return callback(err, null);
@@ -447,7 +470,7 @@ const replyMessageUsingTemplate = (template, substitutions, sourceMessageFullId,
 
 const getMessageAuthor = (thingId, accessToken, callback) => {
     const url = util.format('%s/api/info?id=%s', baseUrl, thingId);
-    request.get({ url: url, headers: { 'User-Agent': userAgent, 'Authorization': 'Bearer ' + globalAccessToken } }, (err, res, body) => {
+    request.get({ url: url, headers: { 'User-Agent': config.userAgent, 'Authorization': 'Bearer ' + globalAccessToken } }, (err, res, body) => {
         if (err) {
             return callback(err, null);
         }
@@ -461,6 +484,140 @@ const getMessageAuthor = (thingId, accessToken, callback) => {
         
         return callback(null, (response.data.children.length > 0) ? response.data.children[0].data.author : null);
     });
+};
+
+const sendGild = (sender, recipient, amount, gilddata, callback) => {
+    console.log(`gilding ${recipient} with ${amount} LBC worth ${gilddata.amountUsd} from ${sender}`);
+    
+    const data = {};
+    async.waterfall([
+        (cb) => {
+            // Start DB transaction
+            db.beginTransaction((err) => {
+                if (err) {
+                    return cb(err, null);
+                }
+                return cb(null, true);
+            });
+        },
+        (started, cb) => {
+            // start a transaction
+            // check the sender's balance
+            createOrGetUserId(sender, cb);
+        },
+        (senderId, cb) => {
+            data.senderId = senderId;
+            getBalance(senderId, cb);
+        },
+        (senderBalance, cb) => {
+            // balance is less than amount required for gilding, or the difference after sending the tip is negative
+            if (senderBalance < amount || (senderBalance - amount) < 0) {
+                return sendPMUsingTemplate('ongild.insufficientfunds',
+                                           { how_to_use_url: config.howToUseUrl, amount: amount, amount_usd: gilddata.amountUsd, balance: senderBalance }, message.data.author, () => {
+                    cb(new Error('Insufficient funds'), null);
+                });
+            }
+            
+            return db.query('UPDATE Users SET Balance = Balance - ? WHERE Id = ?', [amount, data.senderId], cb);
+        },
+        (res, fields, cb) => {
+            // save the message
+            const msgdata = gilddata.message.data;
+            db.query(   ['INSERT INTO Messages (AuthorId, Type, FullId, RedditId, ParentRedditId, Subreddit, Body, Context, RedditCreated, Created) ',
+                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())'].join(''),
+                        [data.senderId,
+                         gilddata.message.kind === privateMessageKind ? 1 : 2,
+                         msgdata.name,
+                         msgdata.id,
+                         msgdata.parent_id,
+                         msgdata.subreddit,
+                         msgdata.body,
+                         msgdata.context,
+                         moment.utc(msgdata.created_utc * 1000).format('YYYY-MM-DD HH:mm:ss')
+                        ], cb);
+        },
+        (res, fields, cb) => {
+            // save the tip information
+            db.query(   ['INSERT INTO Tips (MessageId, SenderId, RecipientId, Amount, AmountUsd, ParsedAmount, IsGild, Created) ',
+                         'VALUES (?, ?, ?, ?, ?, ?, 1, UTC_TIMESTAMP())'].join(''),
+                        [res.insertId,
+                         data.senderId,
+                         data.recipientId,
+                         amount,
+                         gilddata.amountUsd,
+                         ['$', config.gildPrice].join(''),
+                        ], cb);
+        },
+        (res, fields, cb) => {
+            // send the gild
+            gildThing(gilddata.message.data.name, cb);
+        },
+        (success, cb) => {
+            // reply to the source message with message template after successful commit
+            replyMessageUsingTemplate('ongild', { sender: `u/${sender}`, recipient: `u/${recipient}`, gild_amount: `${amount} LBC ($${gilddata.amountUsd})`, how_to_use_url: config.howToUseUrl},
+                                      gilddata.message.data.name, cb);
+        },
+        (success, cb) => {
+            // Mark the message as read
+            markMessageRead(gilddata.message.data.name, cb);
+        },
+        (success, cb) => {
+            // commit the transaction
+            db.commit((err) => {
+                if (err) {
+                    return cb(err, null);
+                }
+                
+                return cb(null, true);
+            });
+        }
+    ], (err) => {
+        if (err) {
+            console.log(err);
+            return db.rollback(() => {
+                callback(err, null);
+            });
+        }
+        
+        // success
+        return callback(null, true);
+    });
+};
+
+const doGild = function(message, callback) {
+    async.waterfall([
+        (cb) => {
+            getMessageAuthor(message.data.parent_id, globalAccessToken, cb);
+        },
+        (recipient, cb) => {
+            const sender = message.data.author;
+            if (sender !== recipient) {
+                return cb(null, { message, recipient, sender, amountUsd: config.gildPrice });
+            }
+            
+            return cb(null, null);
+        },
+        (gilddata, cb) => {
+            if (gilddata && gilddata.amountUsd > 0) {
+                return convertUsdToLbc(gilddata.amountUsd, (err, convertedAmount) => {
+                    if (err) {
+                        return cb(err);
+                    }
+                    
+                    gilddata.amountLbc = convertedAmount;
+                    return cb(null, gilddata);
+                });
+            }
+            return cb(null, null);
+        },
+        (data, cb) => {
+            if (gilddata) {
+                return sendGild(data.sender, data.recipient, data.amountLbc, data, cb);
+            }
+            
+            return cb(null, null);
+        }
+    ], callback);
 };
 
 const doSendTip = function(body, message, callback) {
@@ -488,7 +645,7 @@ const doSendTip = function(body, message, callback) {
         // get the amount
         amountUsd = parseFloat(parts[nameFirst ? 1 : 0].substring(1));
         if (isNaN(amountUsd) || amountUsd <= 0) {
-            return sendPMUsingTemplate('onsendtip.invalidamount', { how_to_use_url: howToUseUrl }, message.data.author, () => {
+            return sendPMUsingTemplate('onsendtip.invalidamount', { how_to_use_url: config.howToUseUrl }, message.data.author, () => {
                 callback(null, null);
             });
         }
@@ -568,7 +725,7 @@ const doSendBalance = (message, callback) => {
         },
         (balance, cb) => {
             // send message with balance
-            replyMessageUsingTemplate('onbalance', { how_to_use_url: howToUseUrl, amount: balance }, message.data.name, cb);
+            replyMessageUsingTemplate('onbalance', { how_to_use_url: config.howToUseUrl, amount: balance }, message.data.name, cb);
         },
         (success, cb) => {
             // mark messge as read
@@ -625,7 +782,7 @@ const doWithdrawal = (amount, address, message, callback) => {
         (balance, cb) => {
             // check sufficient balance
             if (balance < amount || balance - amount < 0) {
-                return sendPMUsingTemplate('onwithdraw.insufficientfunds', { how_to_use_url: howToUseUrl }, message.data.author, () => {
+                return sendPMUsingTemplate('onwithdraw.insufficientfunds', { how_to_use_url: config.howToUseUrl }, message.data.author, () => {
                     cb(new Error('Insufficient funds'), null);
                 });
             }
@@ -658,7 +815,7 @@ const doWithdrawal = (amount, address, message, callback) => {
         },
         (success, cb) => {
             // send a reply
-            replyMessageUsingTemplate('onwithdraw', { how_to_use_url: howToUseUrl, address: address, amount: amount, txid: data.txhash }, message.data.name, cb);
+            replyMessageUsingTemplate('onwithdraw', { how_to_use_url: config.howToUseUrl, address: address, amount: amount, txid: data.txhash }, message.data.name, cb);
         }
     ], (err) => {
         if (err) {
@@ -683,7 +840,7 @@ const doSendDepositAddress = (message, callback) => {
         },
         (address, cb) => {
             // send message with balance
-            replyMessageUsingTemplate('ondeposit', { how_to_use_url: howToUseUrl, address: address }, message.data.name, cb);
+            replyMessageUsingTemplate('ondeposit', { how_to_use_url: config.howToUseUrl, address: address }, message.data.name, cb);
         },
         (success, cb) => {
             // mark messge as read
@@ -731,13 +888,13 @@ const processMessage = function(message, callback) {
             const amount = parseFloat(parts[1]);
             if (isNaN(amount) || amount < 0) {
                 // TODO: send a message that the withdrawal amount is invalid
-                return sendPMUsingTemplate('onwithdraw.invalidamount', { how_to_use_url: howToUseUrl }, message.data.author, () => {
+                return sendPMUsingTemplate('onwithdraw.invalidamount', { how_to_use_url: config.howToUseUrl }, message.data.author, () => {
                     callback(null, null);
                 });
             }
             
             if (amount <= config.lbrycrd.txfee) {
-                return sendPMUsingTemplate('onwithdraw.amountltefee', { how_to_use_url: howToUseUrl, amount: amount, fee: config.lbrycrd.txfee }, message.data.author, () => {
+                return sendPMUsingTemplate('onwithdraw.amountltefee', { how_to_use_url: config.howToUseUrl, amount: amount, fee: config.lbrycrd.txfee }, message.data.author, () => {
                     callback(null, null);
                 });
             }
@@ -747,7 +904,7 @@ const processMessage = function(message, callback) {
             try {
                 base58.decode(address);
             } catch(e) {
-                return sendPMUsingTemplate('onwithdraw.invalidaddress', { how_to_use_url: howToUseUrl }, message.data.author, () => {
+                return sendPMUsingTemplate('onwithdraw.invalidaddress', { how_to_use_url: config.howToUseUrl }, message.data.author, () => {
                     callback(null, null);
                 });
             }
@@ -759,7 +916,12 @@ const processMessage = function(message, callback) {
     }
     
     if (message.kind === commentKind) {
-        doSendTip(body, message, callback);
+        const bodyParts = body.split(' ', 2);
+        if (bodyParts.length === 2 && ('gild' === bodyParts[0].toLowerCase() || 'gild' === bodyParts[1].toLowerCase())) {
+            doGild(message, callback);
+        } else {
+            doSendTip(body, message, callback);
+        }
     }
 };
 
