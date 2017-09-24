@@ -362,11 +362,10 @@ const gildThing = (thingFullId, callback) => {
         try {
             response = JSON.parse(body);
         } catch (e) {
-            return callback(e, null);
+            //return callback(e, null);
         }
         
-        if (response.json.ratelimit > 0 ||
-            response.json.errors.length > 0) {
+        if (response && (response.json.ratelimit > 0 || response.json.errors.length > 0)) {
             return callback(new Error('Rate limited.'), null);
         }
         
