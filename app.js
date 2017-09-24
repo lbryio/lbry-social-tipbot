@@ -14,6 +14,9 @@ if (config.debug) {
 const baseUrl = 'https://oauth.reddit.com';
 const rateUrl = 'https://api.lbry.io/lbc/exchange_rate';
 const tokenUrlFormat = 'https://%s:%s@www.reddit.com/api/v1/access_token';
+const tipRegex = /(\$\d+|\d+( usd| lbc))/i;
+const gildRegex = new RegExp('gild (u|\/u)\/lbryian|(u|\/u)\/lbryian gild', 'ig');
+
 // Other globals
 const commentKind = 't1';
 const privateMessageKind = 't4';
@@ -640,54 +643,48 @@ const doGild = function(message, callback) {
     ], callback);
 };
 
-const doSendTip = function(body, message, callback) {
+const doSendTip = (body, message, callback) => {
     /**
-     * accepted formats:
-     * 1 usd u/lbryian OR u/lbryian 1 usd
-     * 1 lbc u/lbryian OR u/lbryian 1 lbc
-     * $1 u/lbryian OR u/lbryian $1
+     * accepted matched strings:
+     * "1 usd" or "1 lbc" or "$1"
      */
-    const parts = body.split(' ', 3);
-    const parentId = message.data.parent_id ? message.data.parent_id.trim() : null;
-    if ((!parentId || parentId.length === 0) || (parts.length === 0) || (parts.length !== 3 && (parts.length === 2 && parts[0].substring(0,1) !== '$'))) {
-        // ignore the comment
-        return callback(null, null);
-    }
-    
-    if (parts[0] && parts[0].substring(0, 1) === '/') {
-        parts[0] = parts[0].substring(1);
-    }
-     
+    // Use regex matching
     let amountUsd = 0;
     let amountLbc = 0;
-    const nameFirst = parts[0] === config.redditName;
-    if (parts.length === 2) {
-        // get the amount
-        amountUsd = parseFloat(parts[nameFirst ? 1 : 0].substring(1));
-        if (isNaN(amountUsd) || amountUsd <= 0) {
-            return sendPMUsingTemplate('onsendtip.invalidamount', { how_to_use_url: config.howToUseUrl }, 'Invalid amount for send tip', message.data.author, () => {
-                markMessageRead(message.data.name, callback);
-            });
-        }
-    } else if (parts.length === 3) {
-        const amount = parseFloat(parts[nameFirst ? 1 : 0]);
-        const unit = parts[nameFirst ? 2 : 1].toLowerCase();
-        if (isNaN(amount) || amount <= 0 || ['usd', 'lbc'].indexOf(unit) === -1) {
-            // invalid amount or unit
-            return callback(null, null);
-        }
-        
-        if (unit === 'lbc') {
-            amountLbc = amount;
+    let matchedString = '';
+    const match = String(message.data.body).match(tipRegex);
+    if (match.length > 0) {
+        matchedString = match[0];
+        if (matchedString.indexOf(' ') > -1) {
+            const parts = matchedString.split(' ', 2);
+            const amount = parseFloat(parts[0]);
+            const unit = parts[1].toLowerCase();
+            if (isNaN(amount) || amount <= 0 || ['usd', 'lbc'].indexOf(unit) === -1) {
+                // invalid amount or unit
+                return sendPMUsingTemplate('onsendtip.invalidamount', { how_to_use_url: config.howToUseUrl }, 'Invalid amount for send tip', message.data.author, () => {
+                    markMessageRead(message.data.name, callback);
+                });
+            }
+            
+            if (unit === 'lbc') {
+                amountLbc = amount;
+            } else {
+                amountUsd = amount;
+            }
         } else {
-            amountUsd = amount;
+            amountUsd = parseFloat(matchedString.substring(1));
+            if (isNaN(amountUsd) || amountUsd <= 0) {
+                return sendPMUsingTemplate('onsendtip.invalidamount', { how_to_use_url: config.howToUseUrl }, 'Invalid amount for send tip', message.data.author, () => {
+                    markMessageRead(message.data.name, callback);
+                });
+            }
         }
     }
     
     if (amountLbc > 0 || amountUsd > 0) {
-        const parsedAmount = (parts.length === 2) ? parts[nameFirst ? 1 : 0] : [parts[nameFirst ? 1 : 0], parts[nameFirst ? 2 : 1]].join(' ');
+        const parsedAmount = matchedString;
         // get the author of the parent message
-        async.waterfall([
+        return async.waterfall([
             (cb) => {
                 getMessageAuthor(message.data.parent_id, globalAccessToken, cb);
             },
@@ -733,6 +730,9 @@ const doSendTip = function(body, message, callback) {
             }
         ], callback);
     }
+    
+    // not a valid or recognised message, simply mark the message as read
+    return markMessageRead(message.data.name, callback);
 };
 
 const doSendBalance = (message, callback) => {
@@ -940,8 +940,7 @@ const processMessage = function(message, callback) {
     }
     
     if (message.kind === commentKind) {
-        const bodyParts = body.split(' ', 2);
-        if (bodyParts.length === 2 && ('gild' === bodyParts[0].toLowerCase() || 'gild' === bodyParts[1].toLowerCase())) {
+        if (body.match(gildRegex).length > 0) {
             doGild(message, callback);
         } else {
             doSendTip(body, message, callback);
