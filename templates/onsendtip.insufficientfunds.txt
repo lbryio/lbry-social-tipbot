@@ -1,4 +1,4 @@
-You do not have sufficient funds to send a tip to {recipient}. You tried to send **{amount} LBC** but your balance is **{balance} LBC**.
+You do not have sufficient funds to send a tip to {recipient}. You tried to send **{amount} LBC** ({amount_usd}) but your balance is **{balance} LBC**.
 
 ----
 [^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io/faq/what-is-lbry) ^&bull; ^r/lbry

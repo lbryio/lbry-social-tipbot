@@ -226,6 +226,7 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
                                                 how_to_use_url: config.howToUseUrl,
                                                 recipient: `u/${recipient}`,
                                                 amount: amount,
+                                                amount_usd: ['$', tipdata.amountUsd.toFixed(2)].join(''),
                                                 balance: senderBalance
                                             }, 'Insufficient funds to send tip', tipdata.message.data.author, () => {
                     markMessageRead(tipdata.message.data.name, () => {
@@ -275,7 +276,8 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
         },
         (res, fields, cb) => {
             // reply to the source message with message template after successful commit
-            replyMessageUsingTemplate('onsendtip', { recipient: `u/${recipient}`, tip: `${amount} LBC ($${tipdata.amountUsd})`, how_to_use_url: config.howToUseUrl},
+            const amountUsdStr = tipdata.amountUsd.toFixed(2);
+            replyMessageUsingTemplate('onsendtip', { recipient: `u/${recipient}`, tip: `${amount} LBC ($${amountUsdStr})`, how_to_use_url: config.howToUseUrl},
                                       tipdata.message.data.name, cb);
         },
         (success, cb) => {
@@ -523,7 +525,7 @@ const sendGild = (sender, recipient, amount, gilddata, callback) => {
                                                 how_to_use_url: config.howToUseUrl,
                                                 recipient: `u/${recipient}`,
                                                 amount: amount,
-                                                amount_usd: ['$', gilddata.amountUsd].join(''),
+                                                amount_usd: ['$', gilddata.amountUsd.toFixed(2)].join(''),
                                                 balance: senderBalance
                                             }, 'Insufficient funds', gilddata.message.data.author, () => {
                     markMessageRead(gilddata.message.data.name, () => {
@@ -568,7 +570,8 @@ const sendGild = (sender, recipient, amount, gilddata, callback) => {
         },
         (success, cb) => {
             // reply to the source message with message template after successful commit
-            replyMessageUsingTemplate('ongild', { sender: `u/${sender}`, recipient: `u/${recipient}`, gild_amount: `${amount} LBC ($${gilddata.amountUsd})`, how_to_use_url: config.howToUseUrl},
+            const amountUsdStr = gilddata.amountUsd;
+            replyMessageUsingTemplate('ongild', { sender: `u/${sender}`, recipient: `u/${recipient}`, gild_amount: `${amount} LBC ($${amountUsdStr})`, how_to_use_url: config.howToUseUrl},
                                       gilddata.message.data.name, cb);
         },
         (success, cb) => {
