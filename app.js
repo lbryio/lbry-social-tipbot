@@ -611,7 +611,7 @@ const doGild = function(message, callback) {
             return cb(null, null);
         },
         (data, cb) => {
-            if (gilddata) {
+            if (data) {
                 return sendGild(data.sender, data.recipient, data.amountLbc, data, cb);
             }
             
