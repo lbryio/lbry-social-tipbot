@@ -537,6 +537,11 @@ const sendGild = (sender, recipient, amount, gilddata, callback) => {
             return db.query('UPDATE Users SET Balance = Balance - ? WHERE Id = ?', [amount, data.senderId], cb);
         },
         (res, fields, cb) => {
+            createOrGetUserId(recipient, cb);
+        },
+        (recipientId, cb) => {
+            data.recipientId = recipientId;
+            
             // save the message
             const msgdata = gilddata.message.data;
             db.query(   ['INSERT INTO Messages (AuthorId, Type, FullId, RedditId, ParentRedditId, Subreddit, Body, Context, RedditCreated, Created) ',
