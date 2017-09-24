@@ -222,7 +222,8 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
             // balance is less than amount to tip, or the difference after sending the tip is negative
             if (senderBalance < amount || (senderBalance - amount) < 0) {
                 return sendPMUsingTemplate('onsendtip.insufficientfunds',
-                                           { how_to_use_url: config.howToUseUrl, recipient: `u/${recipient}`, amount: amount, balance: senderBalance }, message.data.author, () => {
+                                           { how_to_use_url: config.howToUseUrl, recipient: `u/${recipient}`, amount: amount, balance: senderBalance },
+                                           tipdata.message.data.author, () => {
                     cb(new Error('Insufficient funds'), null);
                 });
             }
@@ -513,7 +514,8 @@ const sendGild = (sender, recipient, amount, gilddata, callback) => {
             // balance is less than amount required for gilding, or the difference after sending the tip is negative
             if (senderBalance < amount || (senderBalance - amount) < 0) {
                 return sendPMUsingTemplate('ongild.insufficientfunds',
-                                           { how_to_use_url: config.howToUseUrl, amount: amount, amount_usd: gilddata.amountUsd, balance: senderBalance }, message.data.author, () => {
+                                           { how_to_use_url: config.howToUseUrl, amount: amount, amount_usd: gilddata.amountUsd, balance: senderBalance },
+                                           gilddata.message.data.author, () => {
                     cb(new Error('Insufficient funds'), null);
                 });
             }

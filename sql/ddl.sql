@@ -25,7 +25,7 @@ CREATE TABLE Messages
     `Created` DATETIME NOT NULL,
     PRIMARY KEY `PK_MessageId` (`Id`),
     FOREIGN KEY `FK_MessageAuthor` (`AuthorId`) REFERENCES `Users` (`Id`),
-    UNIQUE KEY `Idx_MessageRedditId` (`RedditId`)
+    UNIQUE KEY `Idx_MessageFullId` (`RedditFullId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=4;
 
 CREATE TABLE Tips
