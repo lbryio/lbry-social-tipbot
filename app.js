@@ -14,7 +14,7 @@ if (config.debug) {
 const baseUrl = 'https://oauth.reddit.com';
 const rateUrl = 'https://api.lbry.io/lbc/exchange_rate';
 const tokenUrlFormat = 'https://%s:%s@www.reddit.com/api/v1/access_token';
-const tipRegex = /(\$\d+|\d+( usd| lbc))/i;
+const tipRegex = /(\$[\d\.]+|[\d\.]+( usd| lbc))/ig;
 const gildRegex = new RegExp('gild (u|\/u)\/lbryian|(u|\/u)\/lbryian gild', 'ig');
 
 // Other globals
