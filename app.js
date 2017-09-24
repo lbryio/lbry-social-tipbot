@@ -653,7 +653,7 @@ const doSendTip = (body, message, callback) => {
     let amountLbc = 0;
     let matchedString = '';
     const match = String(message.data.body).match(tipRegex);
-    if (match.length > 0) {
+    if (match && match.length > 0) {
         matchedString = match[0];
         if (matchedString.indexOf(' ') > -1) {
             const parts = matchedString.split(' ', 2);
@@ -940,7 +940,8 @@ const processMessage = function(message, callback) {
     }
     
     if (message.kind === commentKind) {
-        if (body.match(gildRegex).length > 0) {
+        const gildMatch = body.match(gildRegex);
+        if (gildMatch && gildMatch.length > 0) {
             doGild(message, callback);
         } else {
             doSendTip(body, message, callback);
