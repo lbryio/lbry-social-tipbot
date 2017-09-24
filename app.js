@@ -222,8 +222,12 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
             // balance is less than amount to tip, or the difference after sending the tip is negative
             if (senderBalance < amount || (senderBalance - amount) < 0) {
                 return sendPMUsingTemplate('onsendtip.insufficientfunds',
-                                           { how_to_use_url: config.howToUseUrl, recipient: `u/${recipient}`, amount: amount, balance: senderBalance },
-                                           'Insufficient funds to send tip', tipdata.message.data.author, () => {
+                                           {
+                                                how_to_use_url: config.howToUseUrl,
+                                                recipient: `u/${recipient}`,
+                                                amount: amount,
+                                                balance: senderBalance
+                                            }, 'Insufficient funds to send tip', tipdata.message.data.author, () => {
                     markMessageRead(tipdata.message.data.name, () => {
                         cb(new Error('Insufficient funds'), null);
                     });
@@ -515,8 +519,13 @@ const sendGild = (sender, recipient, amount, gilddata, callback) => {
             // balance is less than amount required for gilding, or the difference after sending the tip is negative
             if (senderBalance < amount || (senderBalance - amount) < 0) {
                 return sendPMUsingTemplate('ongild.insufficientfunds',
-                                           { how_to_use_url: config.howToUseUrl, amount: amount, amount_usd: gilddata.amountUsd, balance: senderBalance },
-                                           'Insufficient funds', gilddata.message.data.author, () => {
+                                           {
+                                                how_to_use_url: config.howToUseUrl,
+                                                recipient: `u/${recipient}`,
+                                                amount: amount,
+                                                amount_usd: ['$', gilddata.amountUsd].join(''),
+                                                balance: senderBalance
+                                            }, 'Insufficient funds', gilddata.message.data.author, () => {
                     markMessageRead(gilddata.message.data.name, () => {
                         cb(new Error('Insufficient funds'), null); 
                     });
@@ -578,7 +587,6 @@ const sendGild = (sender, recipient, amount, gilddata, callback) => {
         }
     ], (err) => {
         if (err) {
-            console.log(err);
             return db.rollback(() => {
                 callback(err, null);
             });
