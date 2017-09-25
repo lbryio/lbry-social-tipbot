@@ -150,6 +150,7 @@ const createOrGetUserId = (username, callback) => {
 };
 
 const processCompletedDeposits = (callback) => {
+    const delay = 2000;
     async.waterfall([
         (cb) => {
             db.query('SELECT C.DepositId, D.Amount, U.Username, U.Balance FROM CompletedDepositConfirmations C JOIN Deposits D ON D.Id = C.DepositId JOIN Users U ON U.Id = C.UserId', cb);
@@ -157,24 +158,22 @@ const processCompletedDeposits = (callback) => {
         (res, fields, cb) => {
             if (res.length > 0) {
                 return async.eachSeries(res, (completedDeposit, ecb) => {
-                    setTimeout(() => {
-                        sendPMUsingTemplate('ondeposit.completed', { how_to_use_url: config.howToUseUrl, amount: completedDeposit.Amount, balance: completedDeposit.Balance },
-                                            'Deposit completed!', completedDeposit.Username, (err) => {
-                            if (err) {
-                                return ecb(err, null);
+                    sendPMUsingTemplate('ondeposit.completed', { how_to_use_url: config.howToUseUrl, amount: completedDeposit.Amount, balance: completedDeposit.Balance },
+                                        'Deposit completed!', completedDeposit.Username, (err) => {
+                        if (err) {
+                            return setTimeout(ecb, delay, err);
+                        }
+                        
+                        // remove the entry from the DB
+                        return db.query('DELETE FROM CompletedDepositConfirmations WHERE DepositId = ?', [completedDeposit.DepositId], (ierr) => {
+                            if (ierr) {
+                                return setTimeout(ecb, delay, ierr);
                             }
                             
-                            // remove the entry from the DB
-                            return db.query('DELETE FROM CompletedDepositConfirmations WHERE DepositId = ?', [completedDeposit.DepositId], (ierr) => {
-                                if (ierr) {
-                                    return ecb(ierr, null);
-                                }
-                                
-                                // success
-                                return ecb(null, true);
-                            });
-                        });    
-                    }, 2000); // Wait 2 seconds between each request (if there are multiple to send)
+                            // success
+                            return setTimeout(ecb, delay, null, true);
+                        });
+                    });
                     // TODO: Implement inserting messages into a pending message queue instead
                 }, cb);
             }
