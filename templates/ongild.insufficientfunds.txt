@@ -1,4 +1,4 @@
 You do not have sufficient funds to gild {recipient}. Gilding costs **{amount} LBC** ({amount_usd}) but your balance is **{balance} LBC**.
 
 ----
-[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io/faq/what-is-lbry) ^&bull; ^r/lbry
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io) ^&bull; ^r/lbry

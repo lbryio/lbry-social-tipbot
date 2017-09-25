@@ -1,4 +1,4 @@
 Great news! Your **{amount} LBC** deposit was completed successfully with 3 confirmations. Your new balance is **{balance} LBC**.
 
 ----
-[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io/faq/what-is-lbry) ^&bull; ^r/lbry
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io) ^&bull; ^r/lbry

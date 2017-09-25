@@ -1,4 +1,4 @@
 Send any amount of LBC you'd like to deposit to `{address}`.
 
 ----
-[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io/faq/what-is-lbry) ^&bull; ^r/lbry
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io) ^&bull; ^r/lbry
