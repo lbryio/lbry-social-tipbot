@@ -52,6 +52,15 @@ CREATE TABLE PendingMessageQueue
     PRIMARY KEY `PK_PendingMessageId` (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=4;
 
+CREATE TABLE CompletedDepositConfirmations
+(
+    `DepositId` BIGINT UNSIGNED NOT NULL,
+    `UserId` BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY `PK_DepositConfirmationId` (`DepositId`),
+    FOREIGN KEY `FK_CompletedDepositConfirmation` (`DepositId`) REFERENCES `Deposits` (`Id`),
+    FOREIGN KEY `FK_CompletedDepositUser` (`UserId`) REFERENCES `Users` (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=COMPRESSED KEY_BLOCK_SIZE=4;
+
 CREATE TABLE Deposits
 (
     `Id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -86,6 +95,7 @@ FOR EACH ROW
 BEGIN
     IF NEW.Confirmations >= 3 THEN
         UPDATE Users U SET U.Balance = U.Balance + NEW.Amount WHERE U.Id = NEW.UserId;
+        INSERT INTO CompletedDepositConfirmations (DepositId, UserId) VALUES (NEW.Id, NEW.UserId);
     END IF;
 END;
 
@@ -94,7 +104,8 @@ CREATE TRIGGER `Trg_OnDepositUpdated`
 FOR EACH ROW
 BEGIN
     IF OLD.Confirmations < 3 AND NEW.Confirmations >= 3 THEN
-        UPDATE Users U SET U.Balance = U.Balance + NEW.Amount WHERE U.Id = NEW.UserId;
+        UPDATE Users U SET U.Balance = U.Balance + OLD.Amount WHERE U.Id = OLD.UserId;
+        INSERT INTO CompletedDepositConfirmations (DepositId, UserId) VALUES (OLD.Id, OLD.UserId);
     END IF;
 END;
 //

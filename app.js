@@ -28,6 +28,7 @@ const messageTemplates = {};
 const templateNames = [
     'onbalance',
     'ondeposit',
+    'ondeposit.completed',
     'ongild',
     'ongild.insufficientfunds',
     'onsendtip',
@@ -144,6 +145,41 @@ const createOrGetUserId = (username, callback) => {
             }
             
             return cb(null, userId);
+        }
+    ], callback);
+};
+
+const processCompletedDeposits = (callback) => {
+    async.waterfall([
+        (cb) => {
+            db.query('SELECT C.DepositId, D.Amount, U.Username, U.Balance FROM CompletedDepositConfirmations C JOIN Deposits D ON D.Id = C.DepositId JOIN Users U ON U.Id = C.UserId', cb);
+        },
+        (res, fields, cb) => {
+            if (res.length > 0) {
+                return async.eachSeries(res, (completedDeposit, ecb) => {
+                    setTimeout(() => {
+                        sendPMUsingTemplate('ondeposit.complete', { amount: completedDeposit.Amount, balance: completedDeposit.Balance },
+                                            'Deposit completed!', completedDeposit.Username, (err) => {
+                            if (err) {
+                                return ecb(err, null);
+                            }
+                            
+                            // remove the entry from the DB
+                            return db.query('DELETE FROM CompletedDepositConfirmations WHERE DepositId = ?', [C.DepositId], (ierr) => {
+                                if (ierr) {
+                                    return ecb(ierr, null);
+                                }
+                                
+                                // success
+                                return ecb(null, true);
+                            });
+                        });    
+                    }, 2000); // Wait 2 seconds between each request (if there are multiple to send)
+                    // TODO: Implement inserting messages into a pending message queue instead
+                }, cb);
+            }
+            
+            return cb(null, null);
         }
     ], callback);
 };
@@ -953,7 +989,7 @@ const processMessage = function(message, callback) {
 const runBot = () => {
     async.waterfall([
         (cb) => {
-            if (!accessTokenTime || moment.duration(moment().diff(accessTokenTime)).asMinutes() >= 55) {
+            if (!accessTokenTime || moment.duration(moment().diff(accessTokenTime)).asMinutes() >= 59) {
                 // remove old or expired tokens
                 // TODO: Implement refreshToken
                 if (fs.existsSync(config.accessTokenPath)) {
@@ -975,7 +1011,10 @@ const runBot = () => {
         },
         (token, cb) => {
             globalAccessToken = token;
-            retrieveUnreadMessages(token, cb);
+            processCompletedDeposits(cb);
+        },
+        (success, cb) => {
+            retrieveUnreadMessages(globalAccessToken, cb);
         },
         (unread, cb) => {
             async.eachSeries(unread, (message, ecb) => {
