@@ -175,7 +175,13 @@ const processCompletedDeposits = (callback) => {
                         });
                     });
                     // TODO: Implement inserting messages into a pending message queue instead
-                }, cb);
+                }, (err) => {
+                    if (err) {
+                        return cb(err, null);
+                    }
+                    
+                    return cb(null, true);
+                });
             }
             
             return cb(null, true);
