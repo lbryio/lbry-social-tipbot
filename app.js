@@ -158,7 +158,7 @@ const processCompletedDeposits = (callback) => {
             if (res.length > 0) {
                 return async.eachSeries(res, (completedDeposit, ecb) => {
                     setTimeout(() => {
-                        sendPMUsingTemplate('ondeposit.completed', { amount: completedDeposit.Amount, balance: completedDeposit.Balance },
+                        sendPMUsingTemplate('ondeposit.completed', { how_to_use_url: config.howToUseUrl, amount: completedDeposit.Amount, balance: completedDeposit.Balance },
                                             'Deposit completed!', completedDeposit.Username, (err) => {
                             if (err) {
                                 return ecb(err, null);
@@ -179,7 +179,7 @@ const processCompletedDeposits = (callback) => {
                 }, cb);
             }
             
-            return cb(null, null);
+            return cb(null, true);
         }
     ], callback);
 };
