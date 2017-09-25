@@ -165,7 +165,7 @@ const processCompletedDeposits = (callback) => {
                             }
                             
                             // remove the entry from the DB
-                            return db.query('DELETE FROM CompletedDepositConfirmations WHERE DepositId = ?', [C.DepositId], (ierr) => {
+                            return db.query('DELETE FROM CompletedDepositConfirmations WHERE DepositId = ?', [completedDeposit.DepositId], (ierr) => {
                                 if (ierr) {
                                     return ecb(ierr, null);
                                 }
