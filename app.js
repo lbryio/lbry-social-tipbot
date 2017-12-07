@@ -533,6 +533,11 @@ const getMessageAuthor = (thingId, accessToken, callback) => {
             return callback(e, null);
         }
         
+        // possible 500 error
+        if (!response || !response.data || !response.data.children) {
+            return callback(new Error('Could not retrieve the message author info.'), null);
+        }
+        
         return callback(null, (response.data.children.length > 0) ? response.data.children[0].data.author : null);
     });
 };
