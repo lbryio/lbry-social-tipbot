@@ -115,6 +115,10 @@ const retrieveUnreadMessages = (accessToken, callback) => {
             return callback(e, null);
          }
          
+         if (response.error) {
+            return callback(new Error(response.message));
+         }
+         
          return callback(null, response.data.children);
     });
 };
