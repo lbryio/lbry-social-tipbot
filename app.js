@@ -513,6 +513,10 @@ const replyMessageUsingTemplate = (template, substitutions, sourceMessageFullId,
                         return callback(e, null);
                     }
                     
+                    if (!response.json) {
+                        return callback(new Error('Invalid response.'), null);
+                    }
+                    
                     if (response.json.ratelimit > 0 ||
                         response.json.errors.length > 0) {
                         return callback(new Error('Rate limited.'), null);
