@@ -104,7 +104,6 @@ const retrieveUnreadMessages = (accessToken, callback) => {
     const url = util.format('%s/message/unread?limit=100', baseUrl);
     request.get({ url: url, headers: { 'User-Agent': 'lbryian/1.0.0 Node.js (by /u/lbryian)', 'Authorization': 'Bearer ' + accessToken } }, (err, res, body) => {
          if (err) {
-            console.log(err);
             return callback(err);
          }
          
@@ -118,6 +117,8 @@ const retrieveUnreadMessages = (accessToken, callback) => {
          if (response.error) {
             return callback(new Error(response.message));
          }
+
+         console.log(`Got ${response.data.children.length} unread messages.`);
          
          return callback(null, response.data.children);
     });
@@ -140,7 +141,6 @@ const createOrGetUserId = (username, callback) => {
             if (userId === 0) {
                 return db.query('INSERT INTO Users (Username, Created) VALUES (?, UTC_TIMESTAMP())', [username], (err, res) => {
                     if (err) {
-                        console.log(err);
                         return cb(err, null);
                     }
                     
@@ -310,7 +310,6 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
                         ], cb);
         },
         (res, fields, cb) => {
-            console.log('Inserting tip.');
             // save the tip information
             db.query(   ['INSERT INTO Tips (MessageId, SenderId, RecipientId, Amount, AmountUsd, ParsedAmount, Created) ',
                          'VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())'].join(''),
@@ -344,7 +343,6 @@ const sendTip = (sender, recipient, amount, tipdata, callback) => {
         }
     ], (err) => {
         if (err) {
-            console.log(err);
             return db.rollback(() => {
                 callback(err, null);
             });
@@ -426,6 +424,7 @@ const markMessageRead = (messageFullId, callback) => {
     const url = `${baseUrl}/api/read_message`;
     request.post({ url, form: { id: messageFullId }, headers: { 'User-Agent': config.userAgent, 'Authorization': 'Bearer ' + globalAccessToken } }, (err, res, body) => {
         if (err) {
+            console.log(err);
             return callback(err, null);
         }
         
@@ -435,7 +434,7 @@ const markMessageRead = (messageFullId, callback) => {
         } catch (e) {
             return callback(e, null);
         }
-        
+
         // success
         return callback(null, true);
     });
@@ -694,7 +693,13 @@ const doGild = function(message, callback) {
             
             return cb(null, null);
         }
-    ], callback);
+    ], (err) => {
+        if (err) {
+            callback(err, null);
+       }
+
+       markMessageRead(message.data.name, callback);
+    });
 };
 
 const doSendTip = (body, message, callback) => {
@@ -719,7 +724,7 @@ const doSendTip = (body, message, callback) => {
                     markMessageRead(message.data.name, callback);
                 });
             }
-            
+
             if (unit === 'lbc') {
                 amountLbc = amount;
             } else {
@@ -734,7 +739,7 @@ const doSendTip = (body, message, callback) => {
             }
         }
     }
-    
+
     if (amountLbc > 0 || amountUsd > 0) {
         const parsedAmount = matchedString;
         // get the author of the parent message
@@ -766,25 +771,26 @@ const doSendTip = (body, message, callback) => {
                             if (err) {
                                 return cb(err);
                             }
-                            
+
                             tipdata.amountUsd = convertedAmount;
                             return cb(null, tipdata);
                         });
                     }
                 }
 
-                return cb(null, null);    
+                return cb(null, null); 
             },
             (data, cb) => {
                 if (data) {
                     return sendTip(data.sender, data.recipient, data.amountLbc, data, cb);
                 }
-                
-                return cb(null, null);
             }
-        ], callback);
+        ], (err) => {
+             if (err) { callback(err, null); }
+             markMessageRead(message.data.name, callback);
+        });
     }
-    
+
     // not a valid or recognised message, simply mark the message as read
     return markMessageRead(message.data.name, callback);
 };
@@ -807,7 +813,6 @@ const doSendBalance = (message, callback) => {
         }
     ], (err) => {
         if (err) {
-            console.log(err);
             return callback(err, null);
         }
         
@@ -896,7 +901,6 @@ const doWithdrawal = (amount, address, message, callback) => {
         }
     ], (err) => {
         if (err) {
-            console.log(err);
             return db.rollback(() => {
                 callback(err, null);
             });
@@ -940,9 +944,10 @@ const doSendDepositAddress = (message, callback) => {
 // withdraw (PM): withdraw <amount> <address>
 const processMessage = function(message, callback) {
     if (!message.kind || !message.data) {
+        //console.log('Invalid message encountered.');
         return callback(new Error('Invalid message specified for processing.'));
     }
-    
+
     const body = String(message.data.body).trim();
     if (message.kind === privateMessageKind) {
         // balance, deposit or withdraw
@@ -959,9 +964,10 @@ const processMessage = function(message, callback) {
             if (parts.length !== 3 ||
                 parts[0].toLowerCase() !== 'withdraw') {
                 // invalid message, ignore
-                return callback(null, null);
+                //console.log("Invalid Message=" + body);
+                return markMessageRead(message.data.name, callback);
             }
-            
+
             const amount = parseFloat(parts[1]);
             if (isNaN(amount) || amount < 0) {
                 // TODO: send a message that the withdrawal amount is invalid
@@ -986,13 +992,13 @@ const processMessage = function(message, callback) {
                     markMessageRead(message.data.name, callback);
                 });
             }
-            
+
             return doWithdrawal(amount, address, message, callback);
         }
-        
-        return callback(null, null);
+
+        return markMessageRead(message.data.name, callback);
     }
-    
+
     if (message.kind === commentKind) {
         const gildMatch = body.match(gildRegex);
         if (gildMatch && gildMatch.length > 0) {
