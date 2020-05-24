@@ -1,4 +1,4 @@
 You do not have sufficient funds for your withdrawal request. You tried to withdraw **{amount} LBC** but your balance is **{balance} LBC**.
 
 ----
-[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io) ^&bull; ^r/lbry
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.com) ^&bull; ^r/lbry
