@@ -1,4 +1,4 @@
 I'm sorry, I do not understand the amount that you specified for the tip.
 
 ----
-[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io) ^&bull; ^r/lbry
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.com) ^&bull; ^r/lbry
