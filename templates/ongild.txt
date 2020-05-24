@@ -1,4 +1,4 @@
 {recipient}, {sender} gilded your post for `{gild_amount}`! Congratulations!
 
 ----
-[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io) ^&bull; ^r/lbry
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.com) ^&bull; ^r/lbry

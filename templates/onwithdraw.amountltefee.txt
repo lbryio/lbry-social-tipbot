@@ -1,4 +1,4 @@
 You cannot withdraw an amount that is less than or equal to the transaction fee. You tried to withdraw **{amount} LBC** but the transaction fee is **{fee} LBC**.
 
 ----
-[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.io) ^&bull; ^r/lbry
+[^How ^to ^use]({how_to_use_url}) ^&bull; [^What ^is ^LBRY?](https://lbry.com) ^&bull; ^r/lbry
