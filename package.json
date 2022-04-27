@@ -8,7 +8,7 @@
         "url": "git+https://gitlab.com/aureolin/lbry-social-tipbot.git"
     },
     "dependencies": {
-        "async": "^2.5.0",
+        "async": "^2.6.4",
         "bs58check": "^2.0.2",
         "moment": "^2.18.1",
         "mysql": "^2.14.1",
